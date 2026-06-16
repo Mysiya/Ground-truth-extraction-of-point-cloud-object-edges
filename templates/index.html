@@ -5,14 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>点云边缘真值提取平台</title>
     <link rel="stylesheet" href="/static/css/style.css">
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-        }
-    }
-    </script>
 </head>
 <body>
 
@@ -92,24 +84,24 @@
             <div class="extract-status" id="extractStatus"></div>
         </section>
 
-        <!-- 统计 -->
+        <!-- 统计信息 (提取后显示) -->
         <section class="card" id="statsCard" style="display:none;">
             <h2 class="card-title">统计信息</h2>
             <div class="stats-grid" id="statsGrid"></div>
         </section>
 
-        <!-- 下载 -->
+        <!-- 下载 (提取后显示) -->
         <section class="card" id="downloadCard" style="display:none;">
             <h2 class="card-title">下载结果</h2>
             <div class="download-buttons">
-                <button class="btn btn-download" id="downloadPlyBtn" onclick="downloadResult('ply')">
+                <button class="btn btn-download" onclick="downloadResult('ply')">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
                         <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                     </svg>
                     边缘点云 .ply
                 </button>
-                <button class="btn btn-download" id="downloadTxtBtn" onclick="downloadResult('txt')">
+                <button class="btn btn-download" onclick="downloadResult('txt')">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
                         <polyline points="14 2 14 8 20 8"/>
@@ -117,36 +109,71 @@
                     边缘线段 .txt
                 </button>
             </div>
+            <p class="viewer-hint" style="margin-top:12px;line-height:1.5;">
+                💡 结果文件可用 <strong>CloudCompare</strong>（免费）或 <strong>MeshLab</strong>（免费）打开查看。<br>
+                在 CloudCompare 中导入 PLY 文件后可设置点颜色为红色进行可视化。
+            </p>
         </section>
     </aside>
 
-    <!-- ========== 右侧 3D 视图 ========== -->
+    <!-- ========== 右侧结果展示区 ========== -->
     <section class="viewer" id="viewerContainer">
-        <div class="viewer-toolbar" id="viewerToolbar" style="display:none;">
-            <label class="toggle-label"><input type="checkbox" id="toggleMesh" checked onchange="toggleLayer('mesh',this.checked)"> 网格</label>
-            <label class="toggle-label"><input type="checkbox" id="toggleEdges" checked onchange="toggleLayer('edges',this.checked)"> 边缘线</label>
-            <label class="toggle-label"><input type="checkbox" id="togglePoints" checked onchange="toggleLayer('points',this.checked)"> 边缘点</label>
-            <span class="toolbar-spacer"></span>
-            <button class="btn-icon" id="resetCameraBtn" title="重置视角" onclick="resetCamera()">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
-                </svg>
-            </button>
-        </div>
-        <div class="viewer-canvas" id="viewerCanvas">
-            <div class="viewer-placeholder" id="viewerPlaceholder">
+        <div class="result-area" id="resultArea">
+            <!-- 初始占位 -->
+            <div class="result-placeholder" id="resultPlaceholder">
                 <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="opacity:0.3;margin-bottom:16px;">
                     <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
                     <line x1="12" y1="22" x2="12" y2="15.5"/>
                 </svg>
-                <p>上传 OBJ 文件并点击"提取边缘"开始</p>
-                <p class="viewer-hint">支持旋转/缩放/平移查看</p>
+                <p>上传 OBJ 文件并点击"提取边缘"</p>
+                <p class="viewer-hint">结果将在此处展示</p>
             </div>
-        </div>
-        <div class="viewer-legend" id="viewerLegend" style="display:none;">
-            <span class="legend-item"><span class="legend-color" style="background:#aaa;"></span> 网格线框</span>
-            <span class="legend-item"><span class="legend-color" style="background:#ff4444;"></span> 尖锐边缘</span>
-            <span class="legend-item"><span class="legend-color" style="background:#ffaa00;"></span> 边缘采样点</span>
+
+            <!-- 结果详情 (提取后填充) -->
+            <div class="result-content" id="resultContent" style="display:none;">
+                <h2 class="result-title">✅ 边缘提取完成</h2>
+
+                <div class="result-summary" id="resultSummary"></div>
+
+                <div class="result-table-wrap">
+                    <table class="result-table">
+                        <thead>
+                            <tr>
+                                <th>指标</th>
+                                <th>数值</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="result-actions">
+                    <button class="btn btn-primary" onclick="downloadResult('ply')" style="width:auto;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        下载 PLY 点云
+                    </button>
+                    <button class="btn btn-download" onclick="downloadResult('txt')" style="width:auto;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        下载 TXT 线段
+                    </button>
+                </div>
+
+                <div class="result-tips">
+                    <h3>📖 如何可视化结果</h3>
+                    <ol>
+                        <li>下载 <strong>CloudCompare</strong>（免费）：<a href="https://www.cloudcompare.org" target="_blank">cloudcompare.org</a></li>
+                        <li>打开 CloudCompare，拖入下载的 <code>.ply</code> 文件</li>
+                        <li>选中点云 → 属性 → 颜色 → 设置为 <strong style="color:#ff0000;">红色 (RGB: 255, 0, 0)</strong></li>
+                        <li>也可同时导入原始 OBJ 网格作为参考</li>
+                    </ol>
+                </div>
+            </div>
         </div>
     </section>
 </main>
@@ -161,13 +188,11 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <!-- ================================================================ -->
-<!-- 核心交互逻辑 — 内联脚本，不依赖任何 CDN                          -->
+<!-- 核心交互逻辑 -->
 <!-- ================================================================ -->
 <script>
-// ---- 全局状态 ----
 var SESSION_ID = null;
 
-// ---- 辅助函数 ----
 function showLoading(msg) {
     document.getElementById('loadingText').textContent = msg;
     document.getElementById('loadingOverlay').style.display = 'flex';
@@ -188,23 +213,6 @@ function toast(msg, type) {
     }, 3500);
 }
 
-function showStats(stats) {
-    var items = [
-        ['顶点数', stats.vertex_count],
-        ['三角面数', stats.face_count],
-        ['尖锐边缘', stats.sharp_edge_count],
-        ['边界边', stats.boundary_count],
-        ['二面角边缘', stats.dihedral_count],
-        ['边缘采样点', stats.edge_point_count],
-    ];
-    var html = '';
-    items.forEach(function(item) {
-        html += '<div class="stat-item"><div class="stat-value">' + item[1].toLocaleString() + '</div><div class="stat-label">' + item[0] + '</div></div>';
-    });
-    document.getElementById('statsGrid').innerHTML = html;
-    document.getElementById('statsCard').style.display = '';
-}
-
 function downloadResult(type) {
     if (SESSION_ID) {
         window.open('/api/download/' + SESSION_ID + '/' + type, '_blank');
@@ -219,7 +227,6 @@ fileInput.addEventListener('change', function() {
     if (this.files.length > 0) handleFile(this.files[0]);
 });
 
-// 拖拽事件
 uploadZone.addEventListener('dragover', function(e) {
     e.preventDefault();
     this.classList.add('dragover');
@@ -238,13 +245,11 @@ function handleFile(file) {
         toast('仅支持 .obj 文件', 'error');
         return;
     }
-
     document.getElementById('fileName').textContent = file.name;
     document.getElementById('fileInfo').style.display = 'flex';
     document.getElementById('uploadIcon').style.display = 'none';
     document.getElementById('uploadText').style.display = 'none';
     uploadZone.classList.add('has-file');
-
     uploadFile(file);
 }
 
@@ -260,8 +265,8 @@ function clearFile() {
     document.getElementById('extractBtn').disabled = true;
     document.getElementById('statsCard').style.display = 'none';
     document.getElementById('downloadCard').style.display = 'none';
-    // 通知 3D 查看器清除
-    if (window.viewerClear) window.viewerClear();
+    document.getElementById('resultContent').style.display = 'none';
+    document.getElementById('resultPlaceholder').style.display = '';
 }
 
 // ---- API 调用 ----
@@ -284,7 +289,6 @@ function uploadFile(file) {
             document.getElementById('uploadStatus').textContent = '✓ 上传成功 — ' + data.vertex_count.toLocaleString() + ' 顶点, ' + data.face_count.toLocaleString() + ' 面';
             document.getElementById('uploadStatus').className = 'upload-status success';
             document.getElementById('extractBtn').disabled = false;
-            // 自动提取
             doExtract();
         })
         .catch(function(err) {
@@ -321,13 +325,14 @@ function doExtract() {
             }
             document.getElementById('extractStatus').textContent = '✓ 提取完成 — ' + data.stats.sharp_edge_count + ' 条边缘, ' + data.stats.edge_point_count.toLocaleString() + ' 个点';
             document.getElementById('extractStatus').className = 'extract-status success';
+
+            // 左侧统计
             showStats(data.stats);
+            document.getElementById('statsCard').style.display = '';
             document.getElementById('downloadCard').style.display = '';
-            document.getElementById('viewerPlaceholder').style.display = 'none';
-            document.getElementById('viewerToolbar').style.display = 'flex';
-            document.getElementById('viewerLegend').style.display = 'flex';
-            // 通知 3D 查看器渲染
-            if (window.viewerRender) window.viewerRender(data);
+
+            // 右侧结果
+            showResult(data);
         })
         .catch(function(err) {
             hideLoading();
@@ -335,209 +340,59 @@ function doExtract() {
         });
 }
 
-// ---- 3D 查看器桥接函数 (供 viewer.js module 调用) ----
-function toggleLayer(layer, visible) {
-    if (window.viewerToggle) window.viewerToggle(layer, visible);
-}
-function resetCamera() {
-    if (window.viewerReset) window.viewerReset();
-}
-
-console.log('[平台] 核心交互逻辑已就绪');
-</script>
-
-<!-- ================================================================ -->
-<!-- 3D 降级占位 (如果 Three.js 加载失败则使用这些空函数)              -->
-<!-- ================================================================ -->
-<script>
-window.viewerRender = function(){};
-window.viewerClear = function(){};
-window.viewerToggle = function(){};
-window.viewerReset = function(){};
-</script>
-
-<!-- ================================================================ -->
-<!-- Three.js 3D 查看器                                                -->
-<!-- ================================================================ -->
-<script type="module">
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
-console.log('[3D] Three.js 加载成功，初始化...');
-
-var scene, camera, renderer, controls;
-var meshGroup, edgeGroup, pointGroup;
-var defaultCamPos, defaultTarget;
-var sceneReady = false;
-
-function initScene() {
-    if (sceneReady) return;
-    var canvas = document.getElementById('viewerCanvas');
-
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0f0f1a);
-
-    var rect = canvas.getBoundingClientRect();
-    camera = new THREE.PerspectiveCamera(50, rect.width / Math.max(rect.height, 1), 0.1, 1000);
-    camera.position.set(8, 6, 10);
-
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(rect.width, rect.height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    canvas.appendChild(renderer.domElement);
-
-    controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.08;
-    controls.target.set(0, 0, 0);
-    controls.update();
-
-    scene.add(new THREE.AmbientLight(0x404060, 1.5));
-    var dl = new THREE.DirectionalLight(0xffffff, 2);
-    dl.position.set(10, 20, 10);
-    scene.add(dl);
-    var dl2 = new THREE.DirectionalLight(0x8888cc, 0.8);
-    dl2.position.set(-10, -2, -5);
-    scene.add(dl2);
-
-    scene.add(new THREE.GridHelper(20, 20, 0x333355, 0x1a1a2e));
-    scene.add(new THREE.AxesHelper(3));
-
-    meshGroup = new THREE.Group();
-    edgeGroup = new THREE.Group();
-    pointGroup = new THREE.Group();
-    scene.add(meshGroup);
-    scene.add(edgeGroup);
-    scene.add(pointGroup);
-
-    defaultCamPos = camera.position.clone();
-    defaultTarget = controls.target.clone();
-
-    window.addEventListener('resize', function() {
-        if (!renderer) return;
-        var r = canvas.getBoundingClientRect();
-        camera.aspect = r.width / Math.max(r.height, 1);
-        camera.updateProjectionMatrix();
-        renderer.setSize(r.width, r.height);
+function showStats(stats) {
+    var items = [
+        ['顶点数', stats.vertex_count],
+        ['三角面数', stats.face_count],
+        ['尖锐边缘', stats.sharp_edge_count],
+        ['边界边', stats.boundary_count],
+        ['二面角边缘', stats.dihedral_count],
+        ['边缘采样点', stats.edge_point_count],
+    ];
+    var html = '';
+    items.forEach(function(item) {
+        html += '<div class="stat-item"><div class="stat-value">' + item[1].toLocaleString() + '</div><div class="stat-label">' + item[0] + '</div></div>';
     });
-
-    sceneReady = true;
-    (function loop() {
-        requestAnimationFrame(loop);
-        controls.update();
-        renderer.render(scene, camera);
-    })();
+    document.getElementById('statsGrid').innerHTML = html;
 }
 
-function disposeGroup(g) {
-    while (g.children.length) {
-        var c = g.children[0];
-        if (c.geometry) c.geometry.dispose();
-        if (c.material) {
-            var mats = Array.isArray(c.material) ? c.material : [c.material];
-            mats.forEach(function(m) { m.dispose(); });
-        }
-        g.remove(c);
-    }
-}
+function showResult(data) {
+    var s = data.stats;
+    document.getElementById('resultPlaceholder').style.display = 'none';
+    document.getElementById('resultContent').style.display = '';
 
-function clearSceneObjs() {
-    [meshGroup, edgeGroup, pointGroup].forEach(disposeGroup);
-}
+    // 摘要
+    document.getElementById('resultSummary').innerHTML =
+        '从 <strong>' + s.vertex_count.toLocaleString() + '</strong> 个顶点、' +
+        '<strong>' + s.face_count.toLocaleString() + '</strong> 个三角面中，' +
+        '提取出 <strong style="color:#ff4444;">' + s.sharp_edge_count.toLocaleString() + '</strong> 条尖锐边缘，' +
+        '生成 <strong style="color:#ffaa00;">' + s.edge_point_count.toLocaleString() + '</strong> 个边缘采样点。';
 
-function renderMesh(meshData) {
-    var verts = new Float32Array(meshData.vertices.flat());
-    var idx = meshData.faces.flat();
-    var geom = new THREE.BufferGeometry();
-    geom.setAttribute('position', new THREE.BufferAttribute(verts, 3));
-    geom.setIndex(idx);
-    geom.computeVertexNormals();
+    // 表格
+    var rows = [
+        ['OBJ 文件名', data.params ? '' : ''],
+        ['二面角阈值', (data.params ? data.params.angle_threshold : '?') + '°'],
+        ['采样密度', (data.params ? data.params.sample_density : '?') + ' 点/单位'],
+        ['最小采样点', data.params ? data.params.min_samples : '?'],
+        ['顶点数', s.vertex_count.toLocaleString()],
+        ['三角面数', s.face_count.toLocaleString()],
+        ['尖锐边缘总数', s.sharp_edge_count.toLocaleString()],
+        ['  └ 边界边', s.boundary_count.toLocaleString()],
+        ['  └ 二面角边缘', s.dihedral_count.toLocaleString()],
+        ['边缘采样点总数', s.edge_point_count.toLocaleString()],
+    ];
+    // 补文件名
+    var fname = document.getElementById('fileName').textContent || '';
+    rows[0][1] = '<code>' + fname + '</code>';
 
-    var faceMat = new THREE.MeshPhongMaterial({
-        color: 0x334466, transparent: true, opacity: 0.12,
-        side: THREE.DoubleSide, depthWrite: false,
+    var tbody = '';
+    rows.forEach(function(r) {
+        tbody += '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>';
     });
-    meshGroup.add(new THREE.Mesh(geom, faceMat));
-
-    var eGeom = new THREE.EdgesGeometry(geom, 30);
-    meshGroup.add(new THREE.LineSegments(eGeom,
-        new THREE.LineBasicMaterial({ color: 0x888899, transparent: true, opacity: 0.45 })));
+    document.getElementById('resultTableBody').innerHTML = tbody;
 }
 
-function renderEdges(edgeData) {
-    var pos = [];
-    edgeData.segments.forEach(function(s) {
-        pos.push(s.start[0], s.start[1], s.start[2], s.end[0], s.end[1], s.end[2]);
-    });
-    var g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
-    edgeGroup.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xff4444 })));
-
-    if (edgeData.points && edgeData.points.length) {
-        var pf = new Float32Array(edgeData.points.flat());
-        var pg = new THREE.BufferGeometry();
-        pg.setAttribute('position', new THREE.BufferAttribute(pf, 3));
-        var cvs = document.createElement('canvas');
-        cvs.width = cvs.height = 16;
-        var ctx = cvs.getContext('2d');
-        ctx.fillStyle = '#ffaa00';
-        ctx.beginPath(); ctx.arc(8, 8, 4, 0, Math.PI * 2); ctx.fill();
-        pointGroup.add(new THREE.Points(pg, new THREE.PointsMaterial({
-            size: 0.06, map: new THREE.CanvasTexture(cvs),
-            blending: THREE.AdditiveBlending, depthWrite: false, color: 0xffaa00,
-        })));
-    }
-}
-
-function fitCamera(bbox) {
-    if (!bbox) return;
-    var size = Math.max(bbox.size[0], bbox.size[1], bbox.size[2]);
-    var dist = size * 2.5;
-    var cx = bbox.center[0], cy = bbox.center[1], cz = bbox.center[2];
-    controls.target.set(cx, cy, cz);
-    camera.position.set(cx + dist * 0.7, cy + dist * 0.5, cz + dist * 0.7);
-    controls.update();
-    defaultCamPos = camera.position.clone();
-    defaultTarget = controls.target.clone();
-
-    var oldGrid = scene.children.find(function(c) { return c.isGridHelper; });
-    if (oldGrid) scene.remove(oldGrid);
-    var grid = new THREE.GridHelper(size * 3, 20, 0x333355, 0x1a1a2e);
-    grid.position.set(cx, bbox.min[1] - size * 0.05, cz);
-    scene.add(grid);
-}
-
-// 覆盖占位函数为真实实现
-window.viewerRender = function(data) {
-    initScene();
-    clearSceneObjs();
-    if (data.mesh_data) renderMesh(data.mesh_data);
-    if (data.edge_data) renderEdges(data.edge_data);
-    if (data.bbox) fitCamera(data.bbox);
-};
-
-window.viewerClear = function() {
-    if (sceneReady) clearSceneObjs();
-    document.getElementById('viewerPlaceholder').style.display = '';
-    document.getElementById('viewerToolbar').style.display = 'none';
-    document.getElementById('viewerLegend').style.display = 'none';
-};
-
-window.viewerToggle = function(layer, visible) {
-    if (layer === 'mesh' && meshGroup) meshGroup.visible = visible;
-    if (layer === 'edges' && edgeGroup) edgeGroup.visible = visible;
-    if (layer === 'points' && pointGroup) pointGroup.visible = visible;
-};
-
-window.viewerReset = function() {
-    if (defaultCamPos && defaultTarget) {
-        camera.position.copy(defaultCamPos);
-        controls.target.copy(defaultTarget);
-        controls.update();
-    }
-};
-
-console.log('[3D] 查看器就绪，等待数据...');
+console.log('[平台] 就绪');
 </script>
 
 </body>
