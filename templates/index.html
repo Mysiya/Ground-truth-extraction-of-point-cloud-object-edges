@@ -289,7 +289,6 @@ function uploadFile(file) {
             document.getElementById('uploadStatus').textContent = '✓ 上传成功 — ' + data.vertex_count.toLocaleString() + ' 顶点, ' + data.face_count.toLocaleString() + ' 面';
             document.getElementById('uploadStatus').className = 'upload-status success';
             document.getElementById('extractBtn').disabled = false;
-            doExtract();
         })
         .catch(function(err) {
             hideLoading();
