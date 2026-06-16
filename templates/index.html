@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>点云边缘真值提取平台</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+
+<header class="navbar">
+    <div class="navbar-brand">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
+            <line x1="12" y1="22" x2="12" y2="15.5"/>
+            <polyline points="22 8.5 12 15.5 2 8.5"/>
+        </svg>
+        <span>点云边缘真值提取平台</span>
+    </div>
+    <div class="navbar-subtitle">Ground Truth Edge Extraction Platform</div>
+</header>
+
+<main class="main-container">
+
+    <!-- ========== 左侧面板 ========== -->
+    <aside class="panel" id="controlPanel">
+
+        <!-- 上传 -->
+        <section class="card">
+            <h2 class="card-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                上传 OBJ 文件
+            </h2>
+            <div class="upload-zone" id="uploadZone">
+                <div class="upload-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                </div>
+                <p class="upload-text">拖拽 .obj 文件到此处或点击选择</p>
+                <input type="file" id="fileInput" accept=".obj" hidden>
+                <div class="file-info" id="fileInfo" style="display:none;">
+                    <span class="file-name" id="fileName"></span>
+                    <button class="btn-icon" id="clearFileBtn">&times;</button>
+                </div>
+            </div>
+            <div class="upload-status" id="uploadStatus"></div>
+        </section>
+
+        <!-- 参数 -->
+        <section class="card">
+            <h2 class="card-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 1v2M12 21v2"/>
+                </svg>
+                提取参数
+            </h2>
+            <div class="param-group">
+                <label class="param-label">二面角阈值 <span class="param-value" id="angleValue">25.0°</span></label>
+                <input type="range" id="angleThreshold" min="1" max="90" value="25" step="0.5">
+                <p class="param-desc">相邻面夹角超过此值判定为尖锐边缘。值越小，边缘越多。</p>
+            </div>
+            <div class="param-group">
+                <label class="param-label">采样密度 <span class="param-value" id="densityValue">50.0 点/单位</span></label>
+                <input type="range" id="sampleDensity" min="5" max="200" value="50" step="1">
+                <p class="param-desc">每单位长度采样点数，影响边缘点云密度。</p>
+            </div>
+            <div class="param-group">
+                <label class="param-label">最小采样点 <span class="param-value" id="minSamplesValue">2</span></label>
+                <input type="range" id="minSamples" min="1" max="20" value="2" step="1">
+                <p class="param-desc">每条边最少采样点数，避免极短边无点。</p>
+            </div>
+            <button class="btn btn-primary" id="extractBtn" disabled>
+                提取边缘
+            </button>
+            <div class="extract-status" id="extractStatus"></div>
+        </section>
+
+        <!-- 统计 -->
+        <section class="card" id="statsCard" style="display:none;">
+            <h2 class="card-title">统计信息</h2>
+            <div class="stats-grid" id="statsGrid"></div>
+        </section>
+
+        <!-- 下载 -->
+        <section class="card" id="downloadCard" style="display:none;">
+            <h2 class="card-title">下载结果</h2>
+            <div class="download-buttons">
+                <button class="btn btn-download" id="downloadPlyBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    边缘点云 .ply
+                </button>
+                <button class="btn btn-download" id="downloadTxtBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    边缘线段 .txt
+                </button>
+            </div>
+        </section>
+    </aside>
+
+    <!-- ========== 右侧 3D 视图 ========== -->
+    <section class="viewer" id="viewerContainer">
+        <div class="viewer-toolbar" id="viewerToolbar" style="display:none;">
+            <label class="toggle-label"><input type="checkbox" id="toggleMesh" checked> 网格</label>
+            <label class="toggle-label"><input type="checkbox" id="toggleEdges" checked> 边缘线</label>
+            <label class="toggle-label"><input type="checkbox" id="togglePoints" checked> 边缘点</label>
+            <span class="toolbar-spacer"></span>
+            <button class="btn-icon" id="resetCameraBtn" title="重置视角">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
+                </svg>
+            </button>
+        </div>
+        <div class="viewer-canvas" id="viewerCanvas">
+            <div class="viewer-placeholder" id="viewerPlaceholder">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="opacity:0.3;margin-bottom:16px;">
+                    <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
+                    <line x1="12" y1="22" x2="12" y2="15.5"/>
+                </svg>
+                <p>上传 OBJ 文件并点击"提取边缘"开始</p>
+                <p class="viewer-hint">支持旋转/缩放/平移查看</p>
+            </div>
+        </div>
+        <div class="viewer-legend" id="viewerLegend" style="display:none;">
+            <span class="legend-item"><span class="legend-color" style="background:#aaa;"></span> 网格线框</span>
+            <span class="legend-item"><span class="legend-color" style="background:#ff4444;"></span> 尖锐边缘</span>
+            <span class="legend-item"><span class="legend-color" style="background:#ffaa00;"></span> 边缘采样点</span>
+        </div>
+    </section>
+</main>
+
+<!-- Loading Overlay -->
+<div class="overlay" id="loadingOverlay" style="display:none;">
+    <div class="spinner"></div>
+    <p id="loadingText">处理中...</p>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script type="module" src="/static/js/viewer.js"></script>
+</body>
+</html>
