@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>点云边缘真值提取平台</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
 </head>
 <body>
 
@@ -339,40 +347,23 @@ console.log('[平台] 核心交互逻辑已就绪');
 </script>
 
 <!-- ================================================================ -->
-<!-- Three.js 3D 查看器 (动态加载，内置 CDN 容错)                       -->
+<!-- 3D 降级占位 (如果 Three.js 加载失败则使用这些空函数)              -->
+<!-- ================================================================ -->
+<script>
+window.viewerRender = function(){};
+window.viewerClear = function(){};
+window.viewerToggle = function(){};
+window.viewerReset = function(){};
+</script>
+
+<!-- ================================================================ -->
+<!-- Three.js 3D 查看器                                                -->
 <!-- ================================================================ -->
 <script type="module">
-let THREE, OrbitControls;
-let viewerReady = false;
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// 尝试加载 Three.js
-try {
-    const m = await import('https://unpkg.com/three@0.160.0/build/three.module.js');
-    const o = await import('https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js');
-    THREE = m; OrbitControls = o.OrbitControls; viewerReady = true;
-    console.log('[3D] Three.js 加载成功 (unpkg)');
-} catch(e1) {
-    console.warn('[3D] unpkg 失败, 尝试 jsdelivr...');
-    try {
-        const m = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js');
-        const o = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js');
-        THREE = m; OrbitControls = o.OrbitControls; viewerReady = true;
-        console.log('[3D] Three.js 加载成功 (jsdelivr)');
-    } catch(e2) {
-        console.error('[3D] 所有CDN加载失败, 3D不可用');
-        document.getElementById('viewerPlaceholder').innerHTML =
-            '<p style="color:#ff5252;">⚠ 3D 组件加载失败，请检查网络</p>' +
-            '<p class="viewer-hint">提取结果仍可下载 (PLY / TXT)</p>';
-    }
-}
-
-if (!viewerReady) {
-    window.viewerRender = function(){};
-    window.viewerClear = function(){};
-    window.viewerToggle = function(){};
-    window.viewerReset = function(){};
-} else {
-// ---- 3D 初始化 ----
+console.log('[3D] Three.js 加载成功，初始化...');
 
 var scene, camera, renderer, controls;
 var meshGroup, edgeGroup, pointGroup;
@@ -516,7 +507,7 @@ function fitCamera(bbox) {
     scene.add(grid);
 }
 
-// ---- 暴露给全局的桥接函数 ----
+// 覆盖占位函数为真实实现
 window.viewerRender = function(data) {
     initScene();
     clearSceneObjs();
@@ -533,9 +524,9 @@ window.viewerClear = function() {
 };
 
 window.viewerToggle = function(layer, visible) {
-    if (layer === 'mesh') meshGroup.visible = visible;
-    if (layer === 'edges') edgeGroup.visible = visible;
-    if (layer === 'points') pointGroup.visible = visible;
+    if (layer === 'mesh' && meshGroup) meshGroup.visible = visible;
+    if (layer === 'edges' && edgeGroup) edgeGroup.visible = visible;
+    if (layer === 'points' && pointGroup) pointGroup.visible = visible;
 };
 
 window.viewerReset = function() {
@@ -547,7 +538,6 @@ window.viewerReset = function() {
 };
 
 console.log('[3D] 查看器就绪，等待数据...');
-} // end if (viewerReady)
 </script>
 
 </body>
